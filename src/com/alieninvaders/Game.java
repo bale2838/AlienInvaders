@@ -21,7 +21,7 @@ public class Game extends Canvas {
 	//true if game is currently "running" or "looping"
 	private boolean gameRunning = true;
 	//list of all entities that exist in the game
-	private ArrayList<Entity> entities = new ArrayList();
+	private ArrayList entities = new ArrayList();
 	//The list of entities that need to be removed from the game this loop
 	private ArrayList removeList = new ArrayList();
 	//Entity representing the player
@@ -34,9 +34,6 @@ public class Game extends Canvas {
 	private long firingInterval = 500;
 	//Number of aliens on the screen
 	private int alienCount;
-
-
-
 
 	//Message to display while waiting for key press
 	private String message = "";
@@ -54,6 +51,8 @@ public class Game extends Canvas {
 	//entry point into game
 	public static void main(String[] args){
 		Game g = new Game();
+		
+		g.gameLoop();
 	}
 
 	/*
@@ -91,7 +90,15 @@ public class Game extends Canvas {
 
 		//add key input system to the canvas so we can respond to a key pressed
 		addKeyListener(new KeyInputHandler());
-
+		
+		//request focus so key events come to us
+		requestFocus();
+		
+		//create the buffering strategy which will allow AWT to manage accelerated graphics
+		createBufferStrategy(2);
+		strategy = getBufferStrategy();
+		
+		initEntities();
 
 	}//END GAME CONSTRUCTOR
 
@@ -101,7 +108,7 @@ public class Game extends Canvas {
 	 */
 	private void initEntities(){
 		//create a new player ship and place it roughly in the center of screen
-		ship = new ShipEntity(this, ".../path/to/ship/sprite/here/", 370, 550);
+		ship = new ShipEntity(this, "ship.gif", 370, 550);
 		entities.add(ship);
 
 		//create block of aliens (5 rows by 12 aliens evenly spaced)
@@ -109,7 +116,7 @@ public class Game extends Canvas {
 		for(int row = 0; row < 5; row++){
 			for(int col = 0; col < 12; col++){
 				Entity alien  = 
-						new AlienEntity(this, ".../path/to/alien/sprite/here/", 100 + (col*50), 50 + (row*30));
+						new AlienEntity(this, "alien.gif", 100 + (col*50), 50 + (row*30));
 				entities.add(alien);
 				alienCount++;
 			}
@@ -129,6 +136,14 @@ public class Game extends Canvas {
 		leftPressed = false;
 		rightPressed = false;
 		firePressed = false;
+	}
+	
+	/*
+	 * Notification that player has died
+	 */
+	public void notifyDeath(){
+		message = "You died! Try again?";
+		waitingForKeyPress = true;
 	}
 	
 	/*
@@ -171,8 +186,15 @@ public class Game extends Canvas {
 		}
 		//if waited long enough, create shot entity, and record time
 		lastFire = System.currentTimeMillis();
-		ShotEntity shot = new ShotEntity(this, "/path/to/shot/sprite/here", ship.getX() + 10, ship.getY() - 30);
+		ShotEntity shot = new ShotEntity(this, "shot.gif", ship.getX() + 10, ship.getY() - 30);
 		entities.add(shot);
+	}
+	
+	/*
+	 * Notification from Game Entity that logic is needed at next opportunity
+	 */
+	public void updateLogic(){
+		logicRequiredThisLoop = true;
 	}
 	
 	/*
