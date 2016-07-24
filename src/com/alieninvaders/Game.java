@@ -10,12 +10,26 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
-
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+/*
+ * Manages the display and game logic.
+ * 
+ * The display of sprites works by looping through
+ * all of the entities and invoking their move 
+ * methods.
+ * 
+ * An inner class is used to allow the user to
+ * control the ship.
+ * 
+ */
 public class Game extends Canvas {
 
+	//The width of the screen
+	private final int WIDTH = 400;
+	//The height of the screen
+	private final int HEIGHT = 300;
 	//The BufferStrategy that allows for the usage of accelerated page flipping
 	private BufferStrategy strategy;
 	//true if game is currently "running" or "looping"
@@ -31,9 +45,10 @@ public class Game extends Canvas {
 	//Time at which last fired a shot
 	private long lastFire = 0;
 	//Interval b/w players shot(ms)
-	private long firingInterval = 500;
+	private long firingInterval = 100;
 	//Number of aliens on the screen
 	private int alienCount;
+	
 
 	//Message to display while waiting for key press
 	private String message = "";
@@ -51,7 +66,7 @@ public class Game extends Canvas {
 	//entry point into game
 	public static void main(String[] args){
 		Game g = new Game();
-		
+
 		g.gameLoop();
 	}
 
@@ -64,11 +79,11 @@ public class Game extends Canvas {
 
 		//get content of frame and set resolution
 		JPanel panel = (JPanel)container.getContentPane();
-		panel.setPreferredSize(new Dimension(800, 600));
+		panel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		panel.setLayout(null);
 
 		//setup canvas size and put it into content of the game
-		setBounds(0, 0, 800, 600);
+		setBounds(0, 0, WIDTH, HEIGHT);
 		panel.add(this);
 
 		//tell AWT to not repaint the canvas since we are doing that ourself
@@ -90,14 +105,14 @@ public class Game extends Canvas {
 
 		//add key input system to the canvas so we can respond to a key pressed
 		addKeyListener(new KeyInputHandler());
-		
+
 		//request focus so key events come to us
 		requestFocus();
-		
+
 		//create the buffering strategy which will allow AWT to manage accelerated graphics
 		createBufferStrategy(2);
 		strategy = getBufferStrategy();
-		
+
 		initEntities();
 
 	}//END GAME CONSTRUCTOR
@@ -108,15 +123,15 @@ public class Game extends Canvas {
 	 */
 	private void initEntities(){
 		//create a new player ship and place it roughly in the center of screen
-		ship = new ShipEntity(this, "ship.gif", 370, 550);
+		ship = new ShipEntity(this, "ship.gif", WIDTH/2, HEIGHT - 25);
 		entities.add(ship);
 
 		//create block of aliens (5 rows by 12 aliens evenly spaced)
 		alienCount = 0;
-		for(int row = 0; row < 5; row++){
-			for(int col = 0; col < 12; col++){
+		for(int row = 0; row < 3; row++){
+			for(int col = 0; col < 6; col++){
 				Entity alien  = 
-						new AlienEntity(this, "alien.gif", 100 + (col*50), 50 + (row*30));
+					new AlienEntity(this, "alien.gif", 60 + (col*50), 10 + (row*30));
 				entities.add(alien);
 				alienCount++;
 			}
@@ -137,7 +152,7 @@ public class Game extends Canvas {
 		rightPressed = false;
 		firePressed = false;
 	}
-	
+
 	/*
 	 * Notification that player has died
 	 */
@@ -145,7 +160,7 @@ public class Game extends Canvas {
 		message = "You died! Try again?";
 		waitingForKeyPress = true;
 	}
-	
+
 	/*
 	 * Notification of win since all aliens are killed
 	 */
@@ -153,29 +168,29 @@ public class Game extends Canvas {
 		message = "Well done! You win!";
 		waitingForKeyPress = true;
 	}
-	
+
 	/*
 	 * Notification alien has been killed
 	 */
 	public void notifyAlienKilled(){
 		//reduce alien count, if none left, player has won
 		alienCount--;
-		
+
 		if(alienCount == 0){
 			notifyWin();
 		}
-		
+
 		//if aliens still exist, speed them up
 		for(int i = 0; i < entities.size(); i++){
 			Entity entity = (Entity)entities.get(i);
-			
+
 			if(entity instanceof AlienEntity){
 				//speed up by 2%
 				entity.setHorizontalMovement(entity.getHorizontalMovement() * 1.02);
 			}
 		}
 	}
-	
+
 	/*
 	 * Attempt to fire
 	 */
@@ -186,28 +201,37 @@ public class Game extends Canvas {
 		}
 		//if waited long enough, create shot entity, and record time
 		lastFire = System.currentTimeMillis();
-		ShotEntity shot = new ShotEntity(this, "shot.gif", ship.getX() + 10, ship.getY() - 30);
+		//ShotEntity shot = new ShotEntity(this, "shot.gif", ship.getX() + 10, ship.getY() - 30);
+		WeaponTwoEntity shot = new WeaponTwoEntity(this, "shot.gif", ship.getX(), ship.getY());
 		entities.add(shot);
 	}
-	
+
 	/*
 	 * Notification from Game Entity that logic is needed at next opportunity
 	 */
 	public void updateLogic(){
 		logicRequiredThisLoop = true;
 	}
-	
+
 	/*
 	 * Remove entity from game. The entity removed will no longer move or be drawn.
 	 * 
 	 * @param entity The entity that should be removed.
 	 */
 	public void removeEntity(Entity entity){
-		removeList.remove(entity);
+		removeList.add(entity);
 	}
 	
+	public int getWidth(){
+		return WIDTH;
+	}
 	
-	
+	public int getHeight(){
+		return HEIGHT;
+	}
+
+
+
 	/*
 	 * The Main Game Loop. This loop is running during all game play and 
 	 * is responsible for the following activities:
@@ -233,7 +257,7 @@ public class Game extends Canvas {
 			//Get hold of a graphics context for accelerated surface and wipe it
 			Graphics2D g = (Graphics2D)strategy.getDrawGraphics();
 			g.setColor(Color.black);
-			g.fillRect(0, 0, 800, 600);
+			g.fillRect(0, 0, WIDTH, HEIGHT);
 
 			//cycle and move entities according to the delta
 			if(!waitingForKeyPress){
@@ -280,14 +304,14 @@ public class Game extends Canvas {
 
 			if(waitingForKeyPress){
 				g.setColor(Color.white);
-				g.drawString(message, (800-g.getFontMetrics().stringWidth(message))/2, 250);
-				g.drawString("Press any key", (800-g.getFontMetrics().stringWidth("Press any key"))/2, 300);
+				g.drawString(message, (WIDTH-g.getFontMetrics().stringWidth(message))/2, HEIGHT/2);
+				g.drawString("Press any key", (WIDTH-g.getFontMetrics().stringWidth("Press any key"))/2, HEIGHT/2 + 20);
 			}
-			
+
 			//done drawing, so wipe graphics and flip buffer over
 			g.dispose();
 			strategy.show();
-			
+
 			//resolve movement of ship. First assume ship isn't moving.
 			//If either cursor key is pressed then update movement accordingly.
 			ship.setHorizontalMovement(0);
@@ -297,19 +321,19 @@ public class Game extends Canvas {
 			if(!(leftPressed) && (rightPressed)){
 				ship.setHorizontalMovement(moveSpeed);
 			}
-			
+
 			//if pressing fire, attempt fire
 			if(firePressed){
 				tryToFire();
 			}
-			
+
 			//sleep for a bit 
 			try{
 				Thread.sleep(10);
 			}catch(Exception e){
-				
+
 			}
-			
+
 		}//END GAME LOOP
 	}
 

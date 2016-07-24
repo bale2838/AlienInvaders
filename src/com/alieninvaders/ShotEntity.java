@@ -59,6 +59,7 @@ public class ShotEntity extends Entity {
 			
 			//notify game that alien has been killed
 			game.notifyAlienKilled();
+			used = true;
 		}
 	}
 
